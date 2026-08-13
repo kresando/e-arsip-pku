@@ -595,8 +595,9 @@ export async function createVouchersBulk(formData: FormData) {
 
 
 
-    const results = await prisma.$transaction(async (tx) => {
+    const results = await prisma.$transaction(async (tx: any) => {
       const creations = [];
+
       for (let i = 0; i < rawVouchers.length; i++) {
         const v = rawVouchers[i];
         const tanggalBukti = new Date(v.tanggalBukti);
