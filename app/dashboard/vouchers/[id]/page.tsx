@@ -250,7 +250,7 @@ export default async function VoucherDetailPage({ params }: PageProps) {
           <NotaDocumentManager
             notaId={voucher.id}
             initialDocuments={JSON.parse(JSON.stringify(voucher.dokumens))}
-            activeLoans={JSON.parse(JSON.stringify(voucher.peminjamans.filter(l => l.status === "DIPINJAM")))}
+            activeLoans={JSON.parse(JSON.stringify(voucher.peminjamans.filter((l: any) => l.status === "DIPINJAM")))}
             divisions={divisionsList}
           />
         </div>
@@ -277,7 +277,8 @@ export default async function VoucherDetailPage({ params }: PageProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {voucher.peminjamans.map((loan) => (
+                {voucher.peminjamans.map((loan: any) => (
+
                   <TableRow key={loan.id} className="border-border/20 text-xs">
                     <TableCell className="font-medium text-foreground">
                       {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "short" }).format(new Date(loan.tanggalPinjam))}
