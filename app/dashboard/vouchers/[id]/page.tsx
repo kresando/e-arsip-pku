@@ -77,7 +77,7 @@ export default async function VoucherDetailPage({ params }: PageProps) {
   }
 
   const userRole = currentUser?.role || "ADMIN";
-  const activeLoan = voucher.peminjamans.find((l) => l.status === "DIPINJAM") || null;
+  const activeLoan = voucher.peminjamans.find((l: any) => l.status === "DIPINJAM") || null;
   const divisionsList = JSON.parse(JSON.stringify(rawDivisions));
 
   return (
@@ -100,11 +100,13 @@ export default async function VoucherDetailPage({ params }: PageProps) {
               </Link>
             </Button>
             <div>
-              <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
-                {voucher.nomorBukti}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Detail pemetaan fisik, berkas digital, dan kontrol sirkulasi arsip
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight font-mono text-foreground">
+                  {voucher.nomorBukti}
+                </h1>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Dibuat pada {new Date(voucher.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })} oleh <strong className="text-foreground">{voucher.user?.name || "Sistem"}</strong>
               </p>
             </div>
           </div>
@@ -119,15 +121,15 @@ export default async function VoucherDetailPage({ params }: PageProps) {
         verifiedAt={voucher.verifiedAt ? voucher.verifiedAt.toISOString() : null}
         userRole={userRole}
         activeLoans={voucher.peminjamans
-          .filter((l) => l.status === "DIPINJAM")
-          .map((l) => ({
+          .filter((l: any) => l.status === "DIPINJAM")
+          .map((l: any) => ({
             id: l.id,
             namaPeminjam: l.namaPeminjam,
             divisiPeminjam: l.divisiPeminjam,
             tanggalPinjam: l.tanggalPinjam.toISOString(),
             keterangan: l.keterangan,
             isFullVoucher: l.isFullVoucher,
-            dokumenIds: l.dokumens?.map((d) => d.id) || [],
+            dokumenIds: l.dokumens?.map((d: any) => d.id) || [],
           }))}
         allDocuments={JSON.parse(JSON.stringify(voucher.dokumens))}
         divisions={divisionsList}
