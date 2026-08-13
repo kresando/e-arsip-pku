@@ -1,0 +1,120 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  name          String
+  role          String   @default("ADMIN") // ADMIN
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  notas         Nota[]   @relation("CreatorUser")
+  verifiedNotas Nota[]   @relation("VerifierUser")
+}
+
+model Rak {
+  id         String   @id @default(uuid())
+  namaRak    String   @unique
+  keterangan String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  duses      Dus[]
+}
+
+model Dus {
+  id           String       @id @default(uuid())
+  namaDus      String       @unique
+  keterangan   String?
+  rakId        String?
+  rak          Rak?         @relation(fields: [rakId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  pembungkuses Pembungkus[]
+}
+
+model Pembungkus {
+  id             String   @id @default(uuid())
+  namaPembungkus String   @unique
+  keterangan     String?
+  dusId          String?
+  dus            Dus?     @relation(fields: [dusId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  notas          Nota[]
+}
+
+model Nota {
+  id           String      @id @default(uuid())
+  nomorBukti   String      @unique
+  tanggalBukti DateTime    // The transaction date
+  hari         String      // e.g. "Senin"
+  tanggal      Int         // 1-31
+  bulan        Int         // 1-12
+  tahun        Int         // e.g. 2026
+  keterangan   String?
+  pembungkusId String?
+  pembungkus   Pembungkus? @relation(fields: [pembungkusId], references: [id], onDelete: SetNull)
+  dokumens     NotaDokumen[]
+  
+  // Relations
+  userId       String
+  user         User        @relation("CreatorUser", fields: [userId], references: [id])
+  
+  // Checker Verification Fields
+  isVerified   Boolean     @default(false)
+  verifiedById String?
+  verifiedBy   User?       @relation("VerifierUser", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedAt   DateTime?
+
+  // Circulation Loans
+  peminjamans  Peminjaman[]
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Peminjaman {
+  id             String    @id @default(uuid())
+  notaId         String
+  nota           Nota      @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  namaPeminjam   String
+  divisiPeminjam String
+  divisiId       String?
+  divisi         Divisi?   @relation(fields: [divisiId], references: [id], onDelete: SetNull)
+  tanggalPinjam  DateTime  @default(now())
+  tanggalKembali DateTime?
+  keterangan     String?
+  status         String    // "DIPINJAM", "DIKEMBALIKAN"
+  isFullVoucher  Boolean   @default(true)
+  dokumens       NotaDokumen[] @relation("PeminjamanDokumens")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Divisi {
+  id          String       @id @default(uuid())
+  namaDivisi  String       @unique
+  keterangan  String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  peminjamans Peminjaman[]
+}
+
+model NotaDokumen {
+  id        String   @id @default(uuid())
+  notaId    String
+  nota      Nota     @relation(fields: [notaId], references: [id], onDelete: Cascade)
+  filePath  String
+  fileName  String
+  order     Int      @default(0)
+  peminjamans Peminjaman[] @relation("PeminjamanDokumens")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
