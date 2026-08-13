@@ -481,7 +481,7 @@ export async function borrowVoucher(
       });
 
       if (alreadyBorrowedDocs.length > 0) {
-        const docNames = alreadyBorrowedDocs.map((d) => d.fileName).join(", ");
+        const docNames = alreadyBorrowedDocs.map((d: { fileName: string }) => d.fileName).join(", ");
         return { error: `Berkas berikut sedang dipinjam oleh pihak lain: ${docNames}` };
       }
     }
@@ -499,10 +499,11 @@ export async function borrowVoucher(
         dokumens: data.isFullVoucher
           ? undefined
           : {
-              connect: data.dokumenIds?.map((id) => ({ id })),
+              connect: data.dokumenIds?.map((id: string) => ({ id })),
             },
       },
     });
+
 
     revalidatePath(`/dashboard/vouchers/${notaId}`);
     revalidatePath("/dashboard/vouchers");
