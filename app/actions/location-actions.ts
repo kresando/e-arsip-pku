@@ -37,6 +37,7 @@ export async function createRak(data: { namaRak: string; keterangan?: string }) 
       },
     });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true, data: newRak };
   } catch (error) {
     console.error("Failed to create Rak:", error);
@@ -62,6 +63,7 @@ export async function updateRak(id: string, data: { namaRak: string; keterangan?
       },
     });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true, data: updated };
   } catch (error) {
     console.error("Failed to update Rak:", error);
@@ -73,6 +75,7 @@ export async function deleteRak(id: string) {
   try {
     await prisma.rak.delete({ where: { id } });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete Rak:", error);
@@ -112,6 +115,7 @@ export async function createDus(data: { namaDus: string; keterangan?: string; ra
       },
     });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true, data: newDus };
   } catch (error) {
     console.error("Failed to create Dus:", error);
@@ -138,6 +142,7 @@ export async function updateDus(id: string, data: { namaDus: string; keterangan?
       },
     });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true, data: updated };
   } catch (error) {
     console.error("Failed to update Dus:", error);
@@ -149,6 +154,7 @@ export async function deleteDus(id: string) {
   try {
     await prisma.dus.delete({ where: { id } });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete Dus:", error);
@@ -192,6 +198,7 @@ export async function createPembungkus(data: { namaPembungkus: string; keteranga
       },
     });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true, data: newPembungkus };
   } catch (error) {
     console.error("Failed to create Pembungkus:", error);
@@ -218,6 +225,7 @@ export async function updatePembungkus(id: string, data: { namaPembungkus: strin
       },
     });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true, data: updated };
   } catch (error) {
     console.error("Failed to update Pembungkus:", error);
@@ -229,6 +237,7 @@ export async function deletePembungkus(id: string) {
   try {
     await prisma.pembungkus.delete({ where: { id } });
     revalidatePath("/dashboard/locations");
+    revalidatePath("/dashboard/vouchers");
     return { success: true };
   } catch (error) {
     console.error("Failed to delete Pembungkus:", error);
