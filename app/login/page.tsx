@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, startTransition } from "react";
+import { useActionState, startTransition, useState } from "react";
 import Image from "next/image";
 import { loginAction } from "@/app/actions/user-actions";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lock, User as UserIcon, Loader2 } from "lucide-react";
+import { Lock, User as UserIcon, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -69,7 +70,7 @@ export default function LoginPage() {
                     id="username"
                     name="username"
                     type="text"
-                    placeholder="nama_pengguna"
+                    placeholder="Username"
                     className="pl-9 pr-4 py-1.5 bg-background/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs transition-colors"
                     required
                     disabled={isPending}
@@ -89,14 +90,27 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    className="pl-9 pr-4 py-1.5 bg-background/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs transition-colors"
+                    className="pl-9 pr-10 py-1.5 bg-background/30 border border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-lg text-xs transition-colors"
                     required
                     disabled={isPending}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+                    aria-label={showPassword ? "Sembunyikan password" : "Lihat password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
               </div>
+
 
               <Button
                 type="submit"

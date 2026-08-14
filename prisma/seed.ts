@@ -15,18 +15,19 @@ async function main() {
 
   // 2. Create Users
   const salt = await bcrypt.genSalt(10);
-  const adminPasswordHash = await bcrypt.hash("admin123", salt);
+  const adminPasswordHash = await bcrypt.hash("4kl@sulut", salt);
 
   const admin = await prisma.user.create({
     data: {
-      username: "admin",
-      name: "Admin Keuangan BSG",
+      username: "divakl",
+      name: "Admin Divisi AKL",
       role: "ADMIN",
       passwordHash: adminPasswordHash,
     },
   });
 
   console.log("Users created:", { admin: admin.username });
+
 
   // 2.5 Create Divisions
   const divisions = [
