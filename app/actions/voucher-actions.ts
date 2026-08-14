@@ -10,6 +10,9 @@ function getIndonesianDayName(date: Date): string {
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   return days[date.getDay()];
 }
+// ==========================================
+// VOUCHER (NOTA) ACTIONS
+// ==========================================
 
 export async function getVouchers(filters?: {
   search?: string;
@@ -20,8 +23,14 @@ export async function getVouchers(filters?: {
   bulan?: string;
   isVerified?: string;       // "all", "true", "false"
   statusKeberadaan?: string; // "all", "tersedia", "dipinjam"
+  page?: string | number;
+  pageSize?: string | number;
 }) {
   try {
+    const page = Math.max(1, parseInt(String(filters?.page || 1), 10) || 1);
+    const pageSize = Math.max(1, Math.min(100, parseInt(String(filters?.pageSize || 20), 10) || 20));
+    const skip = (page - 1) * pageSize;
+
     const whereClause: any = {};
 
     if (filters?.search) {
@@ -94,34 +103,55 @@ export async function getVouchers(filters?: {
       };
     }
 
-    return await prisma.nota.findMany({
-      where: whereClause,
-      include: {
-        pembungkus: {
-          include: {
-            dus: {
-              include: {
-                rak: true,
+    const [total, items] = await Promise.all([
+      prisma.nota.count({ where: whereClause }),
+      prisma.nota.findMany({
+        where: whereClause,
+        include: {
+          pembungkus: {
+            include: {
+              dus: {
+                include: {
+                  rak: true,
+                },
               },
             },
           },
+          user: {
+            select: { name: true, username: true },
+          },
+          verifiedBy: {
+            select: { name: true, username: true },
+          },
+          peminjamans: {
+            orderBy: { createdAt: "desc" },
+          },
+          dokumens: true,
         },
-        user: {
-          select: { name: true, username: true },
-        },
-        verifiedBy: {
-          select: { name: true, username: true },
-        },
-        peminjamans: {
-          orderBy: { createdAt: "desc" },
-        },
-        dokumens: true,
-      },
-      orderBy: { tanggalBukti: "desc" },
-    });
+        orderBy: { tanggalBukti: "desc" },
+        skip,
+        take: pageSize,
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / pageSize) || 1;
+
+    return {
+      items,
+      total,
+      totalPages,
+      currentPage: page,
+      pageSize,
+    };
   } catch (error) {
     console.error("Failed to fetch vouchers:", error);
-    return [];
+    return {
+      items: [],
+      total: 0,
+      totalPages: 1,
+      currentPage: 1,
+      pageSize: 20,
+    };
   }
 }
 
@@ -265,61 +295,66 @@ export async function deleteVoucher(id: string) {
 // Get aggregate stats for Dashboard page
 export async function getDashboardStats() {
   try {
-    const totalVouchers = await prisma.nota.count();
-    const totalRak = await prisma.rak.count();
-    const totalDus = await prisma.dus.count();
-    const totalPembungkus = await prisma.pembungkus.count();
-
-    // Checker & Borrowing stats
-    const totalUnverified = await prisma.nota.count({ where: { isVerified: false } });
-    const totalVerified = await prisma.nota.count({ where: { isVerified: true } });
-    const totalBorrowed = await prisma.nota.count({
-      where: {
-        peminjamans: {
-          some: { status: "DIPINJAM" },
-        },
-      },
-    });
-    const totalAvailable = await prisma.nota.count({
-      where: {
-        NOT: {
+    const [
+      totalVouchers,
+      totalRak,
+      totalDus,
+      totalPembungkus,
+      totalUnverified,
+      totalVerified,
+      totalBorrowed,
+      totalAvailable,
+      vouchersByYear,
+      recentVouchers,
+    ] = await Promise.all([
+      prisma.nota.count(),
+      prisma.rak.count(),
+      prisma.dus.count(),
+      prisma.pembungkus.count(),
+      prisma.nota.count({ where: { isVerified: false } }),
+      prisma.nota.count({ where: { isVerified: true } }),
+      prisma.nota.count({
+        where: {
           peminjamans: {
             some: { status: "DIPINJAM" },
           },
         },
-      },
-    });
-
-
-
-    // Vouchers by year
-    const vouchersByYear = await prisma.nota.groupBy({
-      by: ["tahun"],
-      _count: {
-        id: true,
-      },
-      orderBy: {
-        tahun: "asc",
-      },
-    });
-
-    // Recent activity list
-    const recentVouchers = await prisma.nota.findMany({
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: {
-        pembungkus: {
-          include: {
-            dus: {
-              include: {
-                rak: true,
-              },
+      }),
+      prisma.nota.count({
+        where: {
+          NOT: {
+            peminjamans: {
+              some: { status: "DIPINJAM" },
             },
           },
         },
-        user: { select: { name: true } },
-      },
-    });
+      }),
+      prisma.nota.groupBy({
+        by: ["tahun"],
+        _count: {
+          id: true,
+        },
+        orderBy: {
+          tahun: "asc",
+        },
+      }),
+      prisma.nota.findMany({
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: {
+          pembungkus: {
+            include: {
+              dus: {
+                include: {
+                  rak: true,
+                },
+              },
+            },
+          },
+          user: { select: { name: true } },
+        },
+      }),
+    ]);
 
     return {
       totalVouchers,
@@ -352,6 +387,7 @@ export async function getDashboardStats() {
     };
   }
 }
+
 
 export async function verifyVoucher(id: string) {
   try {

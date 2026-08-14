@@ -35,10 +35,18 @@ import {
   Paperclip,
   X,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 
 interface VouchersManagerProps {
-  vouchers: any[];
+  vouchers?: any[];
+  vouchersData?: {
+    items: any[];
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
   rakList: any[];
   dusList: any[];
   pembungkusList: any[];
@@ -52,8 +60,11 @@ interface VouchersManagerProps {
     bulan?: string;
     isVerified?: string;
     statusKeberadaan?: string;
+    page?: string;
+    pageSize?: string;
   };
 }
+
 
 interface BulkRow {
   id: string;
@@ -131,7 +142,8 @@ function incrementDocumentNumber(num: string): string {
 
 
 export default function VouchersManager({
-  vouchers,
+  vouchers: initialVouchers = [],
+  vouchersData,
   rakList,
   dusList,
   pembungkusList,
@@ -141,6 +153,27 @@ export default function VouchersManager({
   const router = useRouter();
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
+
+  const vouchers = vouchersData?.items || initialVouchers || [];
+  const total = vouchersData?.total ?? vouchers.length;
+  const totalPages = vouchersData?.totalPages ?? Math.max(1, Math.ceil(total / 20));
+  const currentPage = vouchersData?.currentPage ?? 1;
+  const pageSize = vouchersData?.pageSize ?? 20;
+
+  const goToPage = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("page", newPage.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const changePageSize = (newSize: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("pageSize", newSize);
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
 
   // Filters state
   const [search, setSearch] = useState(currentFilters.search || "");
@@ -458,6 +491,7 @@ export default function VouchersManager({
     if (bulan) params.set("bulan", bulan);
     if (isVerified) params.set("isVerified", isVerified);
     if (statusKeberadaan) params.set("statusKeberadaan", statusKeberadaan);
+    params.set("page", "1");
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -474,9 +508,8 @@ export default function VouchersManager({
     router.push(pathname);
   };
 
-  // Auto-run filter application on changes (debounce search if needed, but simple triggers are fine)
+  // Auto-run filter application on changes
   useEffect(() => {
-    // Apply filters when dropdowns change
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (rakId) params.set("rakId", rakId);
@@ -486,8 +519,10 @@ export default function VouchersManager({
     if (bulan) params.set("bulan", bulan);
     if (isVerified) params.set("isVerified", isVerified);
     if (statusKeberadaan) params.set("statusKeberadaan", statusKeberadaan);
+    params.set("page", "1");
     router.push(`${pathname}?${params.toString()}`);
   }, [rakId, dusId, pembungkusId, tahun, bulan, isVerified, statusKeberadaan]);
+
 
   const openCreateDialog = () => {
     setDialogMode("create");
@@ -784,171 +819,232 @@ export default function VouchersManager({
 
       {/* Vouchers Data Table */}
       <Card className="border-border/40 rounded-2xl bg-card shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border/30 hover:bg-transparent bg-secondary/10">
-              <TableHead className="font-semibold text-xs text-muted-foreground">Nomor Bukti</TableHead>
-              <TableHead className="font-semibold text-xs text-muted-foreground">Tanggal</TableHead>
-              <TableHead className="font-semibold text-xs text-muted-foreground">Lokasi</TableHead>
-              <TableHead className="font-semibold text-xs text-muted-foreground text-center">Verifikasi</TableHead>
-              <TableHead className="font-semibold text-xs text-muted-foreground text-center">Fisik</TableHead>
-              <TableHead className="font-semibold text-xs text-muted-foreground text-center">Scan</TableHead>
-              <TableHead className="font-semibold text-xs text-muted-foreground text-right">Aksi</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {vouchers.length > 0 ? (
-              vouchers.map((voucher) => {
-                const activeLoans = voucher.peminjamans?.filter((l: any) => l.status === "DIPINJAM") || [];
-                const isFullyBorrowed = activeLoans.some((l: any) => l.isFullVoucher);
-                return (
-                  <TableRow key={voucher.id} className="border-border/20 hover:bg-secondary/15 transition-all">
-                    <TableCell className="font-bold text-sm text-foreground">
-                      <button
-                        onClick={() => router.push(`/dashboard/vouchers/${voucher.id}`)}
-                        className="hover:underline hover:text-primary transition-colors text-left font-bold cursor-pointer"
-                      >
-                        {voucher.nomorBukti}
-                      </button>
-                    </TableCell>
-                    <TableCell className="text-xs text-foreground">
-                      <span className="font-semibold">{voucher.hari}</span>,{" "}
-                      {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(voucher.tanggalBukti))}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {voucher.pembungkus ? (
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            onClick={() => router.push(`/dashboard/locations?tab=pembungkus&search=${encodeURIComponent(voucher.pembungkus.namaPembungkus)}`)}
-                            className="font-semibold text-foreground flex items-center gap-1 hover:underline hover:text-emerald-500 transition-colors text-left cursor-pointer"
-                          >
-                            <Layers className="h-3 w-3 text-emerald-500" />
-                            {voucher.pembungkus.namaPembungkus}
-                          </button>
-                          {voucher.pembungkus.dus && (
-                            <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-1 pl-4">
-                              <FolderOpen className="h-2.5 w-2.5 text-amber-500" />
-                              <button
-                                onClick={() => router.push(`/dashboard/locations?tab=dus&search=${encodeURIComponent(voucher.pembungkus.dus.namaDus)}`)}
-                                className="hover:underline hover:text-amber-500 transition-colors cursor-pointer"
-                              >
-                                {voucher.pembungkus.dus.namaDus}
-                              </button>
-                              {voucher.pembungkus.dus.rak && (
-                                <>
-                                  <span>•</span>
-                                  <MapPin className="h-2.5 w-2.5 text-primary" />
-                                  <button
-                                    onClick={() => router.push(`/dashboard/locations?tab=rak&search=${encodeURIComponent(voucher.pembungkus.dus.rak.namaRak)}`)}
-                                    className="hover:underline hover:text-primary transition-colors cursor-pointer"
-                                  >
-                                    {voucher.pembungkus.dus.rak.namaRak}
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground italic">Belum disimpan</span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-center">
-                      {voucher.isVerified ? (
-                        <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                          Sesuai
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                          <Loader2 className="h-3 w-3 animate-pulse text-amber-500" />
-                          Belum Diperiksa
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {activeLoans.length > 0 ? (
-                        isFullyBorrowed ? (
-                          <span
-                            className="inline-flex items-center gap-1 bg-destructive/10 text-destructive border border-destructive/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-help"
-                            title={activeLoans.map((l: any) => `Dipinjam oleh ${l.namaPeminjam} (${l.divisiPeminjam})`).join("\n")}
-                          >
-                            Dipinjam
-                          </span>
-                        ) : (
-                          <span
-                            className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-help"
-                            title={activeLoans.map((l: any) => `Dipinjam oleh ${l.namaPeminjam} (${l.divisiPeminjam})`).join("\n")}
-                          >
-                            Dipinjam Sebagian
-                          </span>
-                        )
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
-                          Ada di Rak
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {voucher.dokumens && voucher.dokumens.length > 0 ? (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border/30 hover:bg-transparent bg-secondary/10">
+                <TableHead className="font-semibold text-xs text-muted-foreground">Nomor Bukti</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Tanggal</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground">Lokasi</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground text-center">Verifikasi</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground text-center">Fisik</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground text-center">Scan</TableHead>
+                <TableHead className="font-semibold text-xs text-muted-foreground text-right">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {vouchers.length > 0 ? (
+                vouchers.map((voucher) => {
+                  const activeLoans = voucher.peminjamans?.filter((l: any) => l.status === "DIPINJAM") || [];
+                  const isFullyBorrowed = activeLoans.some((l: any) => l.isFullVoucher);
+                  return (
+                    <TableRow key={voucher.id} className="border-border/20 hover:bg-secondary/15 transition-all">
+                      <TableCell className="font-bold text-sm text-foreground">
                         <button
                           onClick={() => router.push(`/dashboard/vouchers/${voucher.id}`)}
-                          className="inline-flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors"
+                          className="hover:underline hover:text-primary transition-colors text-left font-bold cursor-pointer font-mono"
                         >
-                          <FileText className="h-3 w-3" />
-                          {voucher.dokumens.length} Berkas
+                          {voucher.nomorBukti}
                         </button>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 bg-secondary text-muted-foreground border border-border px-2 py-0.5 rounded-full text-[10px] font-semibold">
-                          <EyeOff className="h-3 w-3" />
-                          Kosong
-                        </span>
-                      )}
+                      </TableCell>
+                      <TableCell className="text-xs text-foreground">
+                        <span className="font-semibold">{voucher.hari}</span>,{" "}
+                        {new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date(voucher.tanggalBukti))}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {voucher.pembungkus ? (
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() => router.push(`/dashboard/locations?tab=pembungkus&search=${encodeURIComponent(voucher.pembungkus.namaPembungkus)}`)}
+                              className="font-semibold text-foreground flex items-center gap-1 hover:underline hover:text-emerald-500 transition-colors text-left cursor-pointer"
+                            >
+                              <Layers className="h-3 w-3 text-emerald-500" />
+                              {voucher.pembungkus.namaPembungkus}
+                            </button>
+                            {voucher.pembungkus.dus && (
+                              <div className="text-[10px] text-muted-foreground flex flex-wrap items-center gap-1 pl-4">
+                                <FolderOpen className="h-2.5 w-2.5 text-amber-500" />
+                                <button
+                                  onClick={() => router.push(`/dashboard/locations?tab=dus&search=${encodeURIComponent(voucher.pembungkus.dus.namaDus)}`)}
+                                  className="hover:underline hover:text-amber-500 transition-colors cursor-pointer"
+                                >
+                                  {voucher.pembungkus.dus.namaDus}
+                                </button>
+                                {voucher.pembungkus.dus.rak && (
+                                  <>
+                                    <span>•</span>
+                                    <MapPin className="h-2.5 w-2.5 text-primary" />
+                                    <button
+                                      onClick={() => router.push(`/dashboard/locations?tab=rak&search=${encodeURIComponent(voucher.pembungkus.dus.rak.namaRak)}`)}
+                                      className="hover:underline hover:text-primary transition-colors cursor-pointer"
+                                    >
+                                      {voucher.pembungkus.dus.rak.namaRak}
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground italic">Belum disimpan</span>
+                        )}
+                      </TableCell>
+
+                      <TableCell className="text-center">
+                        {voucher.isVerified ? (
+                          <span className="inline-flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            Sesuai
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            <Loader2 className="h-3 w-3 animate-pulse text-amber-500" />
+                            Belum Diperiksa
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {activeLoans.length > 0 ? (
+                          isFullyBorrowed ? (
+                            <span
+                              className="inline-flex items-center gap-1 bg-destructive/10 text-destructive border border-destructive/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-help"
+                              title={activeLoans.map((l: any) => `Dipinjam oleh ${l.namaPeminjam} (${l.divisiPeminjam})`).join("\n")}
+                            >
+                              Dipinjam
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold cursor-help"
+                              title={activeLoans.map((l: any) => `Dipinjam oleh ${l.namaPeminjam} (${l.divisiPeminjam})`).join("\n")}
+                            >
+                              Dipinjam Sebagian
+                            </span>
+                          )
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                            Ada di Rak
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {voucher.dokumens && voucher.dokumens.length > 0 ? (
+                          <button
+                            onClick={() => router.push(`/dashboard/vouchers/${voucher.id}`)}
+                            className="inline-flex items-center gap-1 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 px-2 py-0.5 rounded-full text-[10px] font-bold cursor-pointer transition-colors"
+                          >
+                            <FileText className="h-3 w-3" />
+                            {voucher.dokumens.length} Berkas
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-secondary text-muted-foreground border border-border px-2 py-0.5 rounded-full text-[10px] font-semibold">
+                            <EyeOff className="h-3 w-3" />
+                            Kosong
+                          </span>
+                        )}
+                      </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="rounded-lg text-primary hover:bg-primary/10"
+                          onClick={() => router.push(`/dashboard/vouchers/${voucher.id}`)}
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          onClick={() => openEditDialog(voucher)}
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => handleDeleteTrigger(voucher.id, voucher.nomorBukti)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="rounded-lg text-primary hover:bg-primary/10"
-                        onClick={() => router.push(`/dashboard/vouchers/${voucher.id}`)}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-                        onClick={() => openEditDialog(voucher)}
-                      >
-                        <Edit className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        className="rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => handleDeleteTrigger(voucher.id, voucher.nomorBukti)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                  </TableRow>
+                );
+              })) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-40 text-center text-xs text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <FileSpreadsheet className="h-8 w-8 text-muted-foreground/30" />
+                      Tidak ada bukti pemindahbukuan ditemukan
                     </div>
                   </TableCell>
                 </TableRow>
-              );
-            })) : (
-              <TableRow>
-                <TableCell colSpan={8} className="h-40 text-center text-xs text-muted-foreground">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <FileSpreadsheet className="h-8 w-8 text-muted-foreground/30" />
-                    Tidak ada bukti pemindahbukuan ditemukan
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Card>      {/* CREATE & EDIT ARCHIVE MODAL */}
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination Controls Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border/30 bg-secondary/5">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <span>
+              Menampilkan <strong className="text-foreground">{total === 0 ? 0 : (currentPage - 1) * pageSize + 1}</strong> - <strong className="text-foreground">{Math.min(currentPage * pageSize, total)}</strong> dari <strong className="text-foreground">{total}</strong> nota
+            </span>
+            <span className="hidden sm:inline text-border/60">•</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px]">Baris:</span>
+              <select
+                value={pageSize.toString()}
+                onChange={(e) => changePageSize(e.target.value)}
+                className="bg-background border border-border text-foreground px-2 py-1 text-xs rounded-lg outline-none cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Page Buttons */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage <= 1 || isPending}
+              onClick={() => goToPage(currentPage - 1)}
+              className="h-8 px-2.5 rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sebelumnya</span>
+            </Button>
+
+            <div className="flex items-center gap-1 px-1.5 text-xs font-semibold">
+              <span className="px-2.5 py-0.5 bg-primary text-primary-foreground rounded-lg shadow-sm">
+                {currentPage}
+              </span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground">
+                {totalPages}
+              </span>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= totalPages || isPending}
+              onClick={() => goToPage(currentPage + 1)}
+              className="h-8 px-2.5 rounded-lg text-xs flex items-center gap-1 cursor-pointer"
+            >
+              <span className="hidden sm:inline">Selanjutnya</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </Card>
+      {/* CREATE & EDIT ARCHIVE MODAL */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-[620px] md:max-w-[660px] max-h-[90vh] rounded-2xl border-border/50 bg-card/95 backdrop-blur-md overflow-hidden p-6 flex flex-col gap-4">
           <DialogHeader className="pb-1 flex-shrink-0">

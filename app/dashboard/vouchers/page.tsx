@@ -15,13 +15,15 @@ interface PageProps {
     bulan?: string;
     isVerified?: string;
     statusKeberadaan?: string;
+    page?: string;
+    pageSize?: string;
   }>;
 }
 
 export default async function VouchersPage({ searchParams }: PageProps) {
   const params = await searchParams;
 
-  const [rawVouchersList, rawRakList, rawDusList, rawPembungkusList, rawUserList] = await Promise.all([
+  const [rawVouchersData, rawRakList, rawDusList, rawPembungkusList, rawUserList] = await Promise.all([
     getVouchers(params),
     getRakList(),
     getDusList(),
@@ -29,7 +31,7 @@ export default async function VouchersPage({ searchParams }: PageProps) {
     getUserList(),
   ]);
 
-  const vouchersList = JSON.parse(JSON.stringify(rawVouchersList));
+  const vouchersData = JSON.parse(JSON.stringify(rawVouchersData));
   const rakList = JSON.parse(JSON.stringify(rawRakList));
   const dusList = JSON.parse(JSON.stringify(rawDusList));
   const pembungkusList = JSON.parse(JSON.stringify(rawPembungkusList));
@@ -45,7 +47,8 @@ export default async function VouchersPage({ searchParams }: PageProps) {
       </div>
 
       <VouchersManager
-        vouchers={vouchersList}
+        vouchersData={vouchersData}
+        vouchers={vouchersData.items || []}
         rakList={rakList}
         dusList={dusList}
         pembungkusList={pembungkusList}
@@ -55,3 +58,4 @@ export default async function VouchersPage({ searchParams }: PageProps) {
     </div>
   );
 }
+
